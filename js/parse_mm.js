@@ -15,8 +15,11 @@ function get_mm_file(file) {
   frames = get_frames(data)
   data = remove_frames(data)
   var [f_hyp, hyp_dat] = get_f_hyp(data)
+  
   thm_dat = get_theorem_data(data, f_hyp)
+  console.log("Got " + Object.keys(thm_dat).length +" freestanding theorems")
   frm_dat = get_frame_data(frames, f_hyp)
+  console.log("Got " + Object.keys(frm_dat).length +" framed theorems")
   
   return Object.assign({}, thm_dat, frm_dat)
 }
@@ -102,6 +105,9 @@ function get_frame_data(frames, f_hyp){
 
   stmnts = {}
   for( f_ind in frames ){
+    if(f_ind % 100 == 0){
+      console.log(f_ind + " out of " + frames.length)
+    }
     frame = frames[f_ind]
     p_array = [...frame.matchAll(proofexp)];
     a_array = [...frame.matchAll(axiomexp)];

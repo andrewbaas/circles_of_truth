@@ -1,4 +1,10 @@
-truths = get_mm_file("static/ql.mm")
+truths = get_mm_file("static/set.mm")
+var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(truths));
+var dlAnchorElem = document.getElementById('downloadAnchorElem');
+dlAnchorElem.setAttribute("href",     dataStr     );
+dlAnchorElem.setAttribute("download", "scene.json");
+dlAnchorElem.click();
+
 cur_id = 0
 
 class Hypothesis {
@@ -99,10 +105,12 @@ class Node{
       let truth = truth_arr[ind]
       this.name = truth.name
       this.size = 1000
+      this.type = "truth"
     } else {
       let hyp = truth_arr[ind]
       this.name = hyp.statement
       this.size = 10000
+      this.type = "hypothesis"
     }
   }
 }
@@ -160,11 +168,13 @@ function update() {
 
   // Update the links…
   link = vis.selectAll("line.link")
+      .attr("stroke", color_links)
       .data(links, function(d) { return d.target.id; });
 
   // Enter any new links.
   link.enter().insert("svg:line", ".node")
       .attr("class", "link")
+      .attr("stroke", color_links)
       .attr("x1", function(d) { return d.source.x; })
       .attr("y1", function(d) { return d.source.y; })
       .attr("x2", function(d) { return d.target.x; })
@@ -173,21 +183,32 @@ function update() {
   // Exit any old links.
   link.exit().remove();
 
-  // Update the nodes…
-  node = vis.selectAll("circle.node")
-      .data(nodes, function(d) { return d.id; })
-      .style("fill", color);
-
+  //// Update the nodes…
+  node = vis.selectAll(".node")
+        .data(nodes, function(d) { return d.id; })
+        
+  nodes = node.enter().append("g").attr("class", "node")
+          .on("click", click)
+          .call(force.drag);
+ 
   // Enter any new nodes.
-  node.enter().append("svg:circle")
-      .attr("class", "node")
-      .attr("cx", function(d) { return d.x; })
-      .attr("cy", function(d) { return d.y; })
+  nodes.append("svg:circle")
+      .attr("class", "circle")
+      .attr("cx", 0)
+      .attr("cy", 0)
       .attr("r", function(d) { return Math.sqrt(d.size) / 10 || 4.5; })
-      .style("fill", color)
-      .on("click", click)
-      .call(force.drag);
-
+      .style("fill", color_nodes);
+ 
+  nodes.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+    var lables = node.append("text")
+          .text(function(d) {
+                    return d.name;
+                  })
+          .attr('x', 6)
+          .attr('y', 3);
+    var titles = node.append("title")
+        .text(function(d){return d.name});
+  
   // Exit any old nodes.
   node.exit().remove();
 }
@@ -198,13 +219,26 @@ function tick() {
       .attr("x2", function(d) { return d.target.x; })
       .attr("y2", function(d) { return d.target.y; });
 
-  node.attr("cx", function(d) { return d.x; })
-      .attr("cy", function(d) { return d.y; });
+  node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
 }
 
+// Color
+
 // Color leaf nodes orange, and packages white or blue.
-function color(d) {
-  return d._children ? "#3182bd" : d.children ? "#c6dbef" : "#fd8d3c";
+function color_nodes(d) {
+  if(d.type == "hypothesis"){
+    return "#CCC53D"
+  } else {
+    return "#807B19"
+  }
+}
+
+function color_links(d) {
+  if(d.type == "conclusion"){
+    return "#CC2943"
+  } else {
+    return "#299FD1"
+  }
 }
 
 // Toggle children on click.
@@ -258,18 +292,21 @@ function nodes_and_links(truth_array, hyp_array){
     for(f_ind in truth.f_hyp){
       var link = {"source": new_node,
                   "target": hyp_to_node[truth.f_hyp[f_ind].id],
-                  "strength":1/num_hyp}
+                  "strength":1/num_hyp,
+                  "type": "floating"}
       links.push(link)
     }
     for(e_ind in truth.e_hyp){
       var link = {"source": new_node,
                   "target": hyp_to_node[truth.e_hyp[e_ind].id],
-                  "strength":1/num_hyp}
+                  "strength":1/num_hyp,
+                  "type": "essential"}
       links.push(link)
     }
     var link = {"source": new_node,
                 "target": hyp_to_node[truth.c_hyp.id],
-                "strength":1}
+                "strength":1,
+                "type": "conclusion"}
     links.push(link)
   }
   //console.log("Generated nodes and links")
